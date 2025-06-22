@@ -1,5 +1,4 @@
-import yaml
-import argparse
+import os
 import time
 import logging
 from selenium import webdriver
@@ -9,9 +8,7 @@ from selenium.webdriver.common.by import By
 from telegram import Bot
 from telegram.error import TelegramError
 
-def load_config(path):
-    with open(path, "r") as f:
-        return yaml.safe_load(f)
+logging.basicConfig(level=logging.INFO)
 
 def send_telegram_message(bot_token, chat_id, message):
     bot = Bot(token=bot_token)
@@ -30,32 +27,40 @@ def setup_driver():
     driver = webdriver.Chrome(service=service, options=options)
     return driver
 
-def check_appointments(driver, config):
-    url = f"https://ais.usvisa-info.com/{config['embassies'][0]['country_code']}/niv/schedule/{config['users'][0]['schedule_id']}/appointment"
+def check_appointments(driver, user_email, schedule_id, embassy_country_code):
+    url = f"https://ais.usvisa-info.com/{embassy_country_code}/niv/schedule/{schedule_id}/appointment"
     driver.get(url)
     time.sleep(3)  # wait for page load
 
     try:
-        no_appointments_text = driver.find_element(By.XPATH, "//*[contains(text(),'No appointments available')]")
+        # Example: check if text 'No appointments available' is on page
+        driver.find_element(By.XPATH, "//*[contains(text(),'No appointments available')]")
         return False
     except:
         return True
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="config.yaml")
-    args = parser.parse_args()
+    # Read config from environment variables
+    user_email = os.getenv("USER_EMAIL")
+    user_password = os.getenv("USER_PASSWORD")  # Not used in this minimal example, but you can add login logic
+    schedule_id = os.getenv("USER_SCHEDULE_ID")
+    group_id = os.getenv("USER_GROUP_ID")       # Not used here, add if needed
+    embassy_country_code = os.getenv("EMBASSY_COUNTRY_CODE")
+    embassy_facility_id = os.getenv("EMBASSY_FACILITY_ID")  # Not used here, add if needed
 
-    logging.basicConfig(level=logging.INFO)
+    telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
-    config = load_config(args.config)
+    if not all([user_email, user_password, schedule_id, group_id, embassy_country_code, embassy_facility_id, telegram_bot_token, telegram_chat_id]):
+        logging.error("Missing one or more required environment variables.")
+        return
 
     driver = setup_driver()
 
-    available = check_appointments(driver, config)
+    available = check_appointments(driver, user_email, schedule_id, embassy_country_code)
     if available:
-        message = "Visa appointment available! Check immediately!"
-        send_telegram_message(config["telegram"]["bot_token"], config["telegram"]["chat_id"], message)
+        message = f"Visa appointment available for {user_email}! Check immediately!"
+        send_telegram_message(telegram_bot_token, telegram_chat_id, message)
         logging.info(message)
     else:
         logging.info("No appointments available.")
