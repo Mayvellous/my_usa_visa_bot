@@ -1,3 +1,4 @@
+flask
 selenium
-pyyaml
-python-telegram-bot==13.7
+webdriver-manager
+python-telegram-bot
