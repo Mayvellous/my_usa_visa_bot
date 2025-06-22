@@ -94,7 +94,7 @@ def bot_loop():
         else:
             logging.info("No appointments available before cutoff date.")
 
-        time.sleep(60 * 15)  # Wait 15 minutes
+        time.sleep(60 * 10)  # Wait 10 minutes
 
 @app.route("/")
 def index():
